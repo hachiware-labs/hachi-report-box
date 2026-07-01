@@ -18,10 +18,12 @@ commit/push the update to a configured GitHub repository.
    - Ask the user only if none of these exists.
 2. Inspect `git status --short` in the report box repository before writing.
    Work with existing changes, and avoid overwriting unrelated user edits.
+   Run the helper as `hachi-report-box` when installed from npm. If using the
+   bundled file directly, run `node scripts/hachi_report_box.js`.
 3. Configure the GitHub target once when needed:
 
    ```bash
-   python scripts/hachi_report_box.py target set \
+   hachi-report-box target set \
      --box-dir /path/to/hachi-report-box \
      --remote git@github.com:owner/report-box.git \
      --branch main
@@ -31,7 +33,7 @@ commit/push the update to a configured GitHub repository.
    contain mixed files:
 
    ```bash
-   python scripts/hachi_report_box.py source add daily-research \
+   hachi-report-box source add daily-research \
      --box-dir /path/to/hachi-report-box \
      --path /path/to/project/reports \
      --project my-project \
@@ -42,7 +44,7 @@ commit/push the update to a configured GitHub repository.
 5. Sync all registered sources and push them to the configured GitHub target:
 
    ```bash
-   python scripts/hachi_report_box.py sync \
+   hachi-report-box sync \
      --box-dir /path/to/hachi-report-box \
      --commit \
      --push

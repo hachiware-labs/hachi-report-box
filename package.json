@@ -1,0 +1,30 @@
+{
+  "name": "@hachiware-labs/hachi-report-box",
+  "version": "0.1.0",
+  "description": "Vercel-compatible skill for syncing registered report sources into a GitHub-backed report box.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hachiware-labs/hachi-report-box.git"
+  },
+  "homepage": "https://github.com/hachiware-labs/hachi-report-box#readme",
+  "bugs": {
+    "url": "https://github.com/hachiware-labs/hachi-report-box/issues"
+  },
+  "bin": {
+    "hachi-report-box": "./scripts/hachi_report_box.js"
+  },
+  "files": [
+    "SKILL.md",
+    "agents",
+    "scripts",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
