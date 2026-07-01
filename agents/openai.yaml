@@ -1,0 +1,7 @@
+interface:
+  display_name: "Hachi Report Box"
+  short_description: "Collect skill reports into a Git box"
+  default_prompt: "Use $hachi-report-box to collect the generated reports from this project into my report box and push them."
+policy:
+  allow_implicit_invocation: true
+
