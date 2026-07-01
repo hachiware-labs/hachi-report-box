@@ -8,6 +8,7 @@ import path from "node:path";
 
 const DEFAULT_CONFIG_FILE = ".hachi-report-box.local.json";
 const DEFAULT_DEST_ROOT = "reports";
+const DEFAULT_MANAGED_ROOT = "reports";
 const SKIP_DIRS = new Set([".git", ".hg", ".svn", "__pycache__", ".pytest_cache"]);
 
 function fail(message) {
@@ -167,6 +168,35 @@ function saveConfig(configPath, config) {
   writeJson(configPath, config);
 }
 
+function ensureLocalConfigIgnored(boxDir, configPath) {
+  if (path.resolve(configPath) !== path.resolve(path.join(boxDir, DEFAULT_CONFIG_FILE))) {
+    return;
+  }
+
+  const gitPath = runGit(boxDir, ["rev-parse", "--git-path", "info/exclude"]).stdout.trim();
+  const excludePath = path.isAbsolute(gitPath) ? gitPath : path.join(boxDir, gitPath);
+  fs.mkdirSync(path.dirname(excludePath), { recursive: true });
+  const existing = fs.existsSync(excludePath)
+    ? fs.readFileSync(excludePath, "utf8")
+    : "";
+  const lines = new Set(existing.split(/\r?\n/).filter(Boolean));
+  let changed = false;
+  for (const ignored of [DEFAULT_CONFIG_FILE, ".hachi-report-box.tmp/"]) {
+    if (!lines.has(ignored)) {
+      lines.add(ignored);
+      changed = true;
+    }
+  }
+  if (changed) {
+    fs.writeFileSync(excludePath, `${[...lines].join("\n")}\n`, "utf8");
+  }
+}
+
+function saveBoxConfig(boxDir, configPath, config) {
+  saveConfig(configPath, config);
+  ensureLocalConfigIgnored(boxDir, configPath);
+}
+
 function uniquePath(targetPath, overwrite) {
   if (overwrite || !fs.existsSync(targetPath)) {
     return targetPath;
@@ -252,8 +282,67 @@ function collectFileMetadata(entryDir) {
   }));
 }
 
+function collectManagedFileMetadata(destinationDir) {
+  return iterFiles(destinationDir)
+    .filter((filePath) => path.basename(filePath) !== "_manifest.json")
+    .map((filePath) => ({
+      path: toPosix(path.relative(destinationDir, filePath)),
+      size: fs.statSync(filePath).size,
+      sha256: sha256File(filePath),
+    }));
+}
+
 function relToBox(boxDir, targetPath) {
   return toPosix(path.relative(boxDir, targetPath));
+}
+
+function normalizeRelativePath(value, label) {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    fail(`${label} must be a non-empty relative path`);
+  }
+  if (path.isAbsolute(raw) || /^[a-zA-Z]:[\\/]/.test(raw)) {
+    fail(`${label} must be relative to the managed root: ${raw}`);
+  }
+
+  const normalized = toPosix(path.normalize(raw)).replace(/^(\.\/)+/, "");
+  if (
+    normalized === "." ||
+    normalized === ".." ||
+    normalized.startsWith("../") ||
+    normalized.includes("/../")
+  ) {
+    fail(`${label} must stay inside the managed root: ${raw}`);
+  }
+  return normalized;
+}
+
+function assertInside(parent, target, label, { allowEqual = false } = {}) {
+  const relative = path.relative(parent, target);
+  const inside =
+    relative === "" ? allowEqual : Boolean(relative) && !relative.startsWith("..") && !path.isAbsolute(relative);
+  if (!inside) {
+    fail(`${label} must stay inside ${parent}: ${target}`);
+  }
+}
+
+function managedRootFrom(config, options = {}) {
+  return (
+    options.managedRoot ||
+    options.destRoot ||
+    config.target?.managed_root ||
+    config.target?.dest_root ||
+    DEFAULT_MANAGED_ROOT
+  );
+}
+
+function resolveManagedDestination(boxDir, managedRoot, destination) {
+  const managedRootRel = normalizeRelativePath(managedRoot, "--managed-root");
+  const destinationRel = normalizeRelativePath(destination, "--to");
+  const managedRootDir = path.resolve(boxDir, managedRootRel);
+  const destinationDir = path.resolve(managedRootDir, destinationRel);
+  assertInside(managedRootDir, destinationDir, "--to");
+  return { managedRootRel, managedRootDir, destinationRel, destinationDir };
 }
 
 function readManifest(manifestPath) {
@@ -268,13 +357,15 @@ function manifestSummary(boxDir, manifestPath) {
   const manifest = readManifest(manifestPath);
   const entryDir = path.dirname(manifestPath);
   const files = Array.isArray(manifest.files) ? manifest.files : [];
+  const createdAt = manifest.created_at || manifest.synced_at || "";
   return {
     title: manifest.title || path.basename(entryDir),
     project: manifest.project || "",
     kind: manifest.kind || "",
-    date: manifest.date || "",
-    created_at: manifest.created_at || "",
-    entry_path: relToBox(boxDir, entryDir),
+    category: manifest.category || manifest.source_name || "",
+    date: manifest.date || createdAt.slice(0, 10),
+    created_at: createdAt,
+    entry_path: manifest.destination_path || manifest.entry_path || relToBox(boxDir, entryDir),
     manifest_path: relToBox(boxDir, manifestPath),
     source_name: manifest.source_name || "",
     file_count: files.length,
@@ -287,7 +378,7 @@ function listManifestPaths(reportsDir) {
     return [];
   }
   return iterFiles(reportsDir)
-    .filter((filePath) => path.basename(filePath) === "manifest.json")
+    .filter((filePath) => ["manifest.json", "_manifest.json"].includes(path.basename(filePath)))
     .sort();
 }
 
@@ -306,12 +397,14 @@ function renderIndexes(boxDir, reportsDir) {
   const lines = [
     "# Hachi Report Box Index",
     "",
-    "| Date | Project | Kind | Title | Source | Files | Path |",
-    "| --- | --- | --- | --- | --- | ---: | --- |",
+    "| Date | Category | Project | Kind | Title | Source | Files | Path |",
+    "| --- | --- | --- | --- | --- | --- | ---: | --- |",
   ];
   for (const item of summaries) {
     lines.push(
-      `| ${mdEscape(item.date)} | ${mdEscape(item.project)} | ${mdEscape(
+      `| ${mdEscape(item.date)} | ${mdEscape(item.category)} | ${mdEscape(
+        item.project
+      )} | ${mdEscape(
         item.kind
       )} | ${mdEscape(item.title)} | ${mdEscape(item.source_name)} | ${
         item.file_count
@@ -349,6 +442,9 @@ function ensureOriginRemote(cwd, remote) {
 }
 
 function gitStageCommitPush(boxDir, paths, message, push, remote, branch) {
+  if (paths.length === 0) {
+    return { committed: false, commit: null, pushed: false };
+  }
   const pathspecs = paths.map((targetPath) => relToBox(boxDir, targetPath));
   runGit(boxDir, ["add", "--", ...pathspecs]);
 
@@ -448,6 +544,140 @@ function discoverSourcePaths(source, skipMissing = false) {
   return [...matches.keys()].sort();
 }
 
+function sourceKey(source) {
+  return source.category || source.name;
+}
+
+function normalizeRegisteredSource(source) {
+  const category = source.category || source.name;
+  if (!category) {
+    fail("Registered source is missing category");
+  }
+  const from = source.from || source.path;
+  if (!from) {
+    fail(`Registered source is missing from/path: ${category}`);
+  }
+  const destination =
+    source.destination ||
+    source.to ||
+    source.location ||
+    source.dest ||
+    source.dest_root ||
+    slugify(category, "source");
+  return {
+    ...source,
+    category,
+    name: source.name || category,
+    from,
+    path: source.path || from,
+    destination,
+    patterns: Array.isArray(source.patterns) ? source.patterns : [],
+    notes: Array.isArray(source.notes) ? source.notes : [],
+  };
+}
+
+function discoverSyncEntries(source, skipMissing = false) {
+  const normalized = normalizeRegisteredSource(source);
+  const sourcePath = resolvePath(String(normalized.from));
+  if (!fs.existsSync(sourcePath)) {
+    if (skipMissing) {
+      return [];
+    }
+    fail(`Registered source does not exist: ${sourcePath}`);
+  }
+
+  const sourceStat = fs.statSync(sourcePath);
+  if (sourceStat.isFile()) {
+    return [{ from: sourcePath, relative: path.basename(sourcePath) }];
+  }
+
+  const patterns = normalized.patterns;
+  if (patterns.length === 0) {
+    return fs
+      .readdirSync(sourcePath, { withFileTypes: true })
+      .filter((entry) => !SKIP_DIRS.has(entry.name))
+      .map((entry) => ({
+        from: path.join(sourcePath, entry.name),
+        relative: entry.name,
+      }))
+      .sort((left, right) => left.relative.localeCompare(right.relative));
+  }
+
+  const regexes = patterns.map(globToRegex);
+  const matches = new Map();
+  for (const candidate of walkEntries(sourcePath)) {
+    const relative = toPosix(path.relative(sourcePath, candidate));
+    if (regexes.some((regex) => regex.test(relative))) {
+      matches.set(path.resolve(candidate), { from: path.resolve(candidate), relative });
+    }
+  }
+  return [...matches.values()].sort((left, right) =>
+    left.relative.localeCompare(right.relative)
+  );
+}
+
+function copySyncEntry(entry, destinationDir) {
+  const relative = normalizeRelativePath(entry.relative, "source relative path");
+  const destination = path.resolve(destinationDir, relative);
+  assertInside(destinationDir, destination, "source relative path", { allowEqual: false });
+  if (fs.statSync(entry.from).isDirectory()) {
+    copyDirectory(entry.from, destination);
+  } else {
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.copyFileSync(entry.from, destination);
+  }
+  return destination;
+}
+
+function buildSyncPlan({ boxDir, config, source, options, date }) {
+  const normalized = normalizeRegisteredSource(source);
+  const managedRoot = managedRootFrom(config, options);
+  const destination = resolveManagedDestination(
+    boxDir,
+    managedRoot,
+    normalized.destination
+  );
+  const entries = discoverSyncEntries(normalized, options.skipMissing);
+  if (entries.length === 0 && !options.skipMissing) {
+    fail(`Registered source has no matching files: ${normalized.category}`);
+  }
+  return { source: normalized, destination, entries, date };
+}
+
+function materializeSyncPlan(plan, stagingDir) {
+  if (fs.existsSync(stagingDir)) {
+    fs.rmSync(stagingDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(stagingDir, { recursive: true });
+
+  for (const entry of plan.entries) {
+    copySyncEntry(entry, stagingDir);
+  }
+
+  const files = collectManagedFileMetadata(stagingDir);
+  const manifest = {
+    category: plan.source.category,
+    source_name: plan.source.name,
+    type: plan.source.type || "local",
+    from: resolvePath(plan.source.from),
+    destination: plan.destination.destinationRel,
+    destination_path: toPosix(
+      path.join(plan.destination.managedRootRel, plan.destination.destinationRel)
+    ),
+    patterns: plan.source.patterns,
+    date: plan.date,
+    synced_at: localIsoString(),
+    title: plan.source.title || plan.source.category,
+    project: plan.source.project || plan.source.category,
+    kind: plan.source.kind || "report",
+    notes: plan.source.notes,
+    files,
+  };
+  const manifestPath = path.join(stagingDir, "_manifest.json");
+  writeJson(manifestPath, manifest);
+  return { stagingDir, manifestPath, fileCount: files.length };
+}
+
 function createEntry({
   boxDir,
   sourcePaths,
@@ -499,12 +729,17 @@ function createEntry({
 }
 
 function selectedSources(config, names) {
-  const sources = config.sources || [];
+  const sources = (config.sources || []).map(normalizeRegisteredSource);
   if (!names || names.length === 0) {
     return sources;
   }
 
-  const byName = new Map(sources.map((source) => [source.name, source]));
+  const byName = new Map(
+    sources.flatMap((source) => [
+      [sourceKey(source), source],
+      [source.name, source],
+    ])
+  );
   return names.map((name) => {
     if (!byName.has(name)) {
       fail(`Unknown source: ${name}`);
@@ -606,32 +841,48 @@ function sourceAddCommand(options) {
   const config = loadConfig(configPath);
 
   const sources = config.sources;
-  const existingIndex = sources.findIndex((source) => source.name === options.name);
+  const category = options.category;
+  const from = options.from || options.path;
+  if (!from) {
+    fail("source add requires --from");
+  }
+  if (!options.destination) {
+    fail("source add requires --to");
+  }
+  const destination = normalizeRelativePath(options.destination, "--to");
+  resolveManagedDestination(boxDir, managedRootFrom(config, options), destination);
+
+  const existingIndex = sources.findIndex(
+    (source) => sourceKey(normalizeRegisteredSource(source)) === category
+  );
   if (existingIndex !== -1 && !options.replace) {
-    fail(`Source already exists: ${options.name}. Use --replace.`);
+    fail(`Source already exists: ${category}. Use --replace.`);
   }
 
   const source = {
-    name: options.name,
+    category,
+    name: options.name || category,
     type: "local",
-    path: resolvePath(options.path),
-    project: options.project || options.name,
-    title: options.title || options.name,
+    from: resolvePath(from),
+    destination,
+    project: options.project || category,
+    title: options.title || category,
     kind: options.kind,
     patterns: options.pattern,
     notes: options.note,
   };
-  if (options.destRoot) {
-    source.dest_root = options.destRoot;
-  }
 
   if (existingIndex === -1) {
     sources.push(source);
   } else {
     sources[existingIndex] = source;
   }
-  sources.sort((left, right) => left.name.localeCompare(right.name));
-  saveConfig(configPath, config);
+  sources.sort((left, right) =>
+    sourceKey(normalizeRegisteredSource(left)).localeCompare(
+      sourceKey(normalizeRegisteredSource(right))
+    )
+  );
+  saveBoxConfig(boxDir, configPath, config);
   printJson({ config: configPath, source });
 }
 
@@ -640,7 +891,11 @@ function sourceListCommand(options) {
   ensureGitRepo(boxDir);
   const configPath = resolveConfigPath(boxDir, options.config);
   const config = loadConfig(configPath);
-  printJson({ config: configPath, sources: config.sources || [] });
+  printJson({
+    config: configPath,
+    managed_root: managedRootFrom(config, options),
+    sources: (config.sources || []).map(normalizeRegisteredSource),
+  });
 }
 
 function sourceRemoveCommand(options) {
@@ -648,13 +903,97 @@ function sourceRemoveCommand(options) {
   ensureGitRepo(boxDir);
   const configPath = resolveConfigPath(boxDir, options.config);
   const config = loadConfig(configPath);
-  const before = config.sources.length;
-  config.sources = config.sources.filter((source) => source.name !== options.name);
-  if (config.sources.length === before) {
-    fail(`Unknown source: ${options.name}`);
+  const normalizedSources = config.sources.map(normalizeRegisteredSource);
+  const removed = normalizedSources.find(
+    (source) => sourceKey(source) === options.category || source.name === options.category
+  );
+  if (!removed) {
+    fail(`Unknown source: ${options.category}`);
   }
-  saveConfig(configPath, config);
-  printJson({ config: configPath, removed: options.name });
+  config.sources = config.sources.filter((source) => {
+    const normalized = normalizeRegisteredSource(source);
+    return sourceKey(normalized) !== sourceKey(removed) && normalized.name !== options.category;
+  });
+  saveBoxConfig(boxDir, configPath, config);
+
+  const removedPaths = [];
+  let git = { committed: false, commit: null, pushed: false };
+  if (options.deleteFiles) {
+    const destination = resolveManagedDestination(
+      boxDir,
+      managedRootFrom(config, options),
+      removed.destination
+    );
+    if (fs.existsSync(destination.destinationDir)) {
+      fs.rmSync(destination.destinationDir, { recursive: true, force: true });
+      removedPaths.push(destination.destinationDir);
+    }
+    const indexPaths = renderIndexes(boxDir, destination.managedRootDir);
+    if (options.commit || options.push) {
+      const target = resolveTarget(config, options);
+      git = gitStageCommitPush(
+        boxDir,
+        [...removedPaths, ...indexPaths],
+        options.message || `Remove report source: ${sourceKey(removed)}`,
+        options.push,
+        target.remote,
+        target.branch
+      );
+    }
+  }
+
+  printJson({
+    config: configPath,
+    removed: sourceKey(removed),
+    removed_paths: removedPaths,
+    git,
+  });
+}
+
+function sourceClearCommand(options) {
+  const boxDir = resolveBoxDir(options.boxDir);
+  ensureGitRepo(boxDir);
+  const configPath = resolveConfigPath(boxDir, options.config);
+  const config = loadConfig(configPath);
+  const removed = (config.sources || []).map(normalizeRegisteredSource);
+  config.sources = [];
+  saveBoxConfig(boxDir, configPath, config);
+
+  const removedPaths = [];
+  const indexPaths = [];
+  if (options.deleteFiles) {
+    const managedRoot = managedRootFrom(config, options);
+    for (const source of removed) {
+      const destination = resolveManagedDestination(boxDir, managedRoot, source.destination);
+      if (fs.existsSync(destination.destinationDir)) {
+        fs.rmSync(destination.destinationDir, { recursive: true, force: true });
+        removedPaths.push(destination.destinationDir);
+      }
+      if (!indexPaths.includes(path.join(destination.managedRootDir, "INDEX.md"))) {
+        indexPaths.push(...renderIndexes(boxDir, destination.managedRootDir));
+      }
+    }
+  }
+
+  let git = { committed: false, commit: null, pushed: false };
+  if (options.deleteFiles && (options.commit || options.push)) {
+    const target = resolveTarget(config, options);
+    git = gitStageCommitPush(
+      boxDir,
+      [...removedPaths, ...indexPaths],
+      options.message || "Clear report sources",
+      options.push,
+      target.remote,
+      target.branch
+    );
+  }
+
+  printJson({
+    config: configPath,
+    removed: removed.map(sourceKey),
+    removed_paths: removedPaths,
+    git,
+  });
 }
 
 function targetSetCommand(options) {
@@ -674,6 +1013,9 @@ function targetSetCommand(options) {
   if (options.destRoot) {
     target.dest_root = options.destRoot;
   }
+  if (options.managedRoot) {
+    target.managed_root = normalizeRelativePath(options.managedRoot, "--managed-root");
+  }
   if (options.setOrigin) {
     if (!options.remote) {
       fail("--set-origin requires --remote");
@@ -681,7 +1023,7 @@ function targetSetCommand(options) {
     ensureOriginRemote(boxDir, options.remote);
   }
 
-  saveConfig(configPath, config);
+  saveBoxConfig(boxDir, configPath, config);
   printJson({ config: configPath, target });
 }
 
@@ -704,63 +1046,76 @@ function syncCommand(options) {
   }
 
   const date = parseDate(options.date);
+  const plans = sources.map((source) =>
+    buildSyncPlan({ boxDir, config, source, options, date })
+  );
+  const activePlans = plans.filter((plan) => plan.entries.length > 0);
+  const skipped = plans
+    .filter((plan) => plan.entries.length === 0)
+    .map((plan) => ({ source: sourceKey(plan.source), reason: "no paths" }));
+
   if (options.dryRun) {
-    const preview = sources.map((source) => ({
-      source: source.name,
-      paths: discoverSourcePaths(source, options.skipMissing),
-      dest_root:
-        options.destRoot ||
-        source.dest_root ||
-        config.target?.dest_root ||
-        DEFAULT_DEST_ROOT,
+    const preview = plans.map((plan) => ({
+      category: plan.source.category,
+      from: resolvePath(plan.source.from),
+      to: toPosix(
+        path.join(plan.destination.managedRootRel, plan.destination.destinationRel)
+      ),
+      files: plan.entries.map((entry) => entry.relative),
     }));
-    printJson({ dry_run: true, box_dir: boxDir, sources: preview });
+    printJson({ dry_run: true, box_dir: boxDir, sources: preview, skipped });
     return;
   }
 
   const statusBefore = gitStatusShort(boxDir);
-  const entries = [];
-  const skipped = [];
-  const destRoots = new Set();
+  const tmpRoot = path.join(boxDir, ".hachi-report-box.tmp", String(Date.now()));
+  const staged = [];
+  try {
+    activePlans.forEach((plan, index) => {
+      const stagingDir = path.join(tmpRoot, `${index}-${slugify(plan.source.category)}`);
+      staged.push({ plan, ...materializeSyncPlan(plan, stagingDir) });
+    });
 
-  for (const source of sources) {
-    const paths = discoverSourcePaths(source, options.skipMissing);
-    if (paths.length === 0) {
-      skipped.push({ source: source.name, reason: "no paths" });
-      continue;
+    for (const item of staged) {
+      const destinationDir = item.plan.destination.destinationDir;
+      assertInside(
+        item.plan.destination.managedRootDir,
+        destinationDir,
+        "sync destination"
+      );
+      if (fs.existsSync(destinationDir)) {
+        fs.rmSync(destinationDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(path.dirname(destinationDir), { recursive: true });
+      fs.renameSync(item.stagingDir, destinationDir);
     }
-
-    const destRoot =
-      options.destRoot || source.dest_root || config.target?.dest_root || DEFAULT_DEST_ROOT;
-    destRoots.add(destRoot);
-    entries.push(
-      createEntry({
-        boxDir,
-        sourcePaths: paths,
-        project: source.project || source.name || "project",
-        title: source.title || source.name || "report",
-        kind: source.kind || "report",
-        date,
-        destRoot,
-        notes: source.notes || [],
-        sourceName: source.name,
-        slug: source.slug,
-        overwrite: options.overwrite,
-      })
-    );
+  } finally {
+    if (fs.existsSync(tmpRoot)) {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
   }
 
+  const managedRoots = new Map();
+  for (const item of staged) {
+    managedRoots.set(
+      item.plan.destination.managedRootRel,
+      item.plan.destination.managedRootDir
+    );
+  }
   const indexPaths = [];
-  for (const destRoot of [...destRoots].sort()) {
-    indexPaths.push(...renderIndexes(boxDir, path.join(boxDir, destRoot)));
+  for (const managedRootDir of [...managedRoots.values()].sort()) {
+    indexPaths.push(...renderIndexes(boxDir, managedRootDir));
   }
 
   let git = { committed: false, commit: null, pushed: false };
-  if (entries.length > 0 && (options.commit || options.push)) {
+  if (staged.length > 0 && (options.commit || options.push)) {
     const target = resolveTarget(config, options);
     git = gitStageCommitPush(
       boxDir,
-      [...entries.map((entry) => entry.entryDir), ...indexPaths],
+      [
+        ...staged.map((item) => item.plan.destination.destinationDir),
+        ...indexPaths,
+      ],
       options.message || `Sync reports: ${date}`,
       options.push,
       target.remote,
@@ -769,10 +1124,12 @@ function syncCommand(options) {
   }
 
   printJson({
-    entries: entries.map((entry) => ({
-      entry_dir: entry.entryDir,
-      manifest: entry.manifestPath,
-      file_count: entry.fileCount,
+    entries: staged.map((item) => ({
+      category: item.plan.source.category,
+      from: resolvePath(item.plan.source.from),
+      to: item.plan.destination.destinationDir,
+      manifest: path.join(item.plan.destination.destinationDir, "_manifest.json"),
+      file_count: item.fileCount,
     })),
     indexes: indexPaths,
     skipped,
@@ -853,6 +1210,7 @@ function commonRepoDefinitions() {
   return {
     "box-dir": { key: "boxDir", type: "value" },
     config: { key: "config", type: "value" },
+    "managed-root": { key: "managedRoot", type: "value" },
   };
 }
 
@@ -871,7 +1229,7 @@ function topUsage() {
 
 Commands:
   collect <sources...>        Collect one-off report files or directories
-  source add|list|remove      Manage registered report sources
+  source add|list|remove|clear Manage registered report sources
   target set|show             Manage the GitHub push target
   sync                        Fetch registered sources, index, commit, and push
 `;
@@ -881,9 +1239,11 @@ function sourceUsage() {
   return `Usage: hachi-report-box source <command> [options]
 
 Commands:
-  add <name> --path <path>    Register a report source
+  add <category> --from <path> --to <path>
+                             Register a report source
   list                       List registered sources
-  remove <name>              Remove a registered source
+  remove <category>          Remove a registered source
+  clear                      Remove all registered sources
 `;
 }
 
@@ -892,6 +1252,7 @@ function targetUsage() {
 
 Commands:
   set --remote <url>          Configure target GitHub repository
+  set --managed-root <path>   Configure the managed folder root
   show                       Show target configuration
 `;
 }
@@ -942,20 +1303,20 @@ function dispatch(argv) {
         rest,
         {
           ...commonRepoDefinitions(),
+          from: { key: "from", type: "value" },
           path: { key: "path", type: "value" },
+          to: { key: "destination", type: "value" },
+          destination: { key: "destination", type: "value" },
           project: { key: "project", type: "value" },
+          name: { key: "name", type: "value" },
           title: { key: "title", type: "value" },
           kind: { key: "kind", type: "value", default: "report" },
           pattern: { key: "pattern", type: "array" },
           note: { key: "note", type: "array" },
-          "dest-root": { key: "destRoot", type: "value" },
           replace: { key: "replace", type: "bool" },
         },
-        [{ key: "name", required: true }]
+        [{ key: "category", required: true }]
       );
-      if (!options.path) {
-        fail("source add requires --path");
-      }
       sourceAddCommand(options);
       return;
     }
@@ -964,9 +1325,31 @@ function dispatch(argv) {
       return;
     }
     if (subcommand === "remove") {
-      sourceRemoveCommand(
-        parseOptions(rest, commonRepoDefinitions(), [{ key: "name", required: true }])
+      const options = parseOptions(
+        rest,
+        {
+          ...commonRepoDefinitions(),
+          ...pushDefinitions(),
+          "delete-files": { key: "deleteFiles", type: "bool" },
+        },
+        [{ key: "category", required: true }]
       );
+      if (options.push) {
+        options.commit = true;
+      }
+      sourceRemoveCommand(options);
+      return;
+    }
+    if (subcommand === "clear") {
+      const options = parseOptions(rest, {
+        ...commonRepoDefinitions(),
+        ...pushDefinitions(),
+        "delete-files": { key: "deleteFiles", type: "bool" },
+      });
+      if (options.push) {
+        options.commit = true;
+      }
+      sourceClearCommand(options);
       return;
     }
     fail(`Unknown source command: ${subcommand}`);

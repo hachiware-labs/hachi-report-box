@@ -1,13 +1,14 @@
 ---
 name: hachi-report-box
-description: Register multiple report sources, fetch generated report or document artifacts from those sources, normalize and index them into a hachi-report-box Git repository, then commit and push to a configured GitHub repository for personal static-site viewing on Vercel or similar hosts. Use when the user says hachi-report-box, report box, collect generated documents, sync report sources, register report sources, archive reports, organize skill outputs, commit/push reports, GitHubへpush, Vercelで見る, 文書を集める, or レポートを整理.
+description: Register report sources with category names, file source paths, and managed-folder destinations, fetch all registered report or document artifacts, place them under the configured hachi-report-box managed folder, then commit and push to a configured GitHub repository for personal static-site viewing on Vercel or similar hosts. Use when the user says hachi-report-box, report box, collect generated documents, sync report sources, register report sources, delete registered sources, archive reports, organize skill outputs, commit/push reports, GitHubへpush, Vercelで見る, 文書を集める, or レポートを整理.
 ---
 
 # Hachi Report Box
 
-Use this skill to register report-producing locations, sync generated artifacts
-from them into a central `hachi-report-box` repository, keep stable indexes, and
-commit/push the update to a configured GitHub repository.
+Use this skill to register report-producing locations with a category, a file
+source, and a destination inside the skill-managed folder. Sync all registered
+sources into the central `hachi-report-box` repository, then commit/push only
+after every registered source has been fetched successfully.
 
 ## Workflow
 
@@ -26,16 +27,18 @@ commit/push the update to a configured GitHub repository.
    hachi-report-box target set \
      --box-dir /path/to/hachi-report-box \
      --remote git@github.com:owner/report-box.git \
-     --branch main
+     --branch main \
+     --managed-root reports
    ```
 
 4. Register each report source once. Use `--pattern` for directories that
-   contain mixed files:
+   contain mixed files. `--to` is relative to the managed root:
 
    ```bash
-   hachi-report-box source add daily-research \
+   hachi-report-box source add research \
      --box-dir /path/to/hachi-report-box \
-     --path /path/to/project/reports \
+     --from /path/to/project/reports \
+     --to research/daily \
      --project my-project \
      --title "Daily research reports" \
      --pattern "*.md"
@@ -50,9 +53,17 @@ commit/push the update to a configured GitHub repository.
      --push
    ```
 
-6. For one-off files, use `collect` directly. Add `--remote` and `--branch`
+6. Remove a registered source when needed:
+
+   ```bash
+   hachi-report-box source remove research --box-dir /path/to/hachi-report-box
+   ```
+
+   Add `--delete-files --commit --push` only when the synced files for that
+   category should also be removed from GitHub.
+7. For one-off files, use `collect` directly. Add `--remote` and `--branch`
    when the target is not already configured.
-7. Report created entry paths, index paths, commit hash, push target, and any
+8. Report synced category paths, index paths, commit hash, push target, and any
    skipped sources.
 
 ## Configuration
@@ -69,17 +80,17 @@ user explicitly wants a shareable configuration.
 
 ## Storage Convention
 
-The helper writes entries under:
+The helper writes synced source files under:
 
 ```text
-reports/<project-slug>/<yyyy>/<yyyy-mm-dd>/<entry-slug>/
+<managed-root>/<registered-to>/
 ```
 
-Each entry contains:
+Each synced category contains:
 
-- `files/`: copied source artifacts.
-- `manifest.json`: metadata, source paths, copied files, sizes, and SHA-256
-  hashes.
+- copied source artifacts, preserving relative paths for pattern matches.
+- `_manifest.json`: category, source path, destination, copied files, sizes,
+  and SHA-256 hashes.
 
 The helper regenerates:
 
@@ -88,9 +99,9 @@ The helper regenerates:
 
 ## Commit Discipline
 
-When committing manually, stage only new entries and regenerated indexes. Do not
-stage unrelated files from the report box repository or local registration
-files. Use concise messages such as:
+When committing manually, stage only managed destination paths and regenerated
+indexes. Do not stage unrelated files from the report box repository or local
+registration files. Use concise messages such as:
 
 ```text
 Sync reports: <yyyy-mm-dd>
