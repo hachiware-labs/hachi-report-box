@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Stock Theme Report - 2026-07-07 v2(新フォーマット版)</title>
+  <link rel="stylesheet" href="../assets/report.css">
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div class="brand"><span class="mark"></span><span>Japan Stock Theme Daily</span></div>
+      <div class="date">作成日: 2026-07-07(v2 新フォーマット版) / 価格データ: 2026-07-06終値ベース</div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-main">
+        <div class="eyebrow">日本株中心 / AIインフラ / 防衛 / エントリープラン運用初日</div>
+        <h1>今日買える銘柄はゼロ。判定イベントは7月下旬の決算ラッシュに集約</h1>
+        <p class="lead">今日の結論: アクティブな5プラン(日立、三菱電機、NEC、三菱重工、フジクラ)はすべてトリガーゾーン外で、成立・無効化とも変化なし。7月7日終値は信頼できる形で取得できず「未取得」扱い(判定信頼度を1段下げる)。今日の仕事は追認記事の再生成ではなく、(1)NECのゾーン設定に必要なPER/FCFデータの取得継続、(2)全プランの次決算日の確定。買い向かい度は3/5を据え置き。</p>
+        <div class="chips">
+          <span class="chip chip-teal">アクティブプラン 5</span>
+          <span class="chip chip-indigo">ゾーン内 0</span>
+          <span class="chip chip-amber">7/7終値 未取得</span>
+          <span class="chip chip-rose">スコア全銘柄据え置き(新規材料なし)</span>
+        </div>
+      </div>
+      <aside class="hero-side">
+        <div class="metric"><div class="metric-label">最接近プラン</div><div class="metric-value">日立</div><div class="metric-note">ゾーン上限まで-5.7%(7/6値)</div></div>
+        <div class="metric"><div class="metric-label">Buy Readiness最高</div><div class="metric-value">84</div><div class="metric-note">90未満 = 買付候補なし</div></div>
+        <div class="metric"><div class="metric-label">次の判定イベント</div><div class="metric-value">Q1決算</div><div class="metric-note">7月下旬〜8月上旬(日付要確認)</div></div>
+      </aside>
+    </section>
+
+    <section class="table-wrap">
+      <h2 class="table-title">Action Board(エントリープランの差分)</h2>
+      <p class="note">`plans/entry_plans.md` の常設プランに対する今日の変化のみ。ゾーン距離は「現値がトリガーゾーン上限に到達するまでの下落率」。7/7終値が未取得のため7/6終値ベースであり、明日の更新で再計算する。</p>
+      <table>
+        <thead><tr><th>銘柄</th><th>プラン状態</th><th>今日の変化</th><th>ゾーンまでの距離</th><th>次のイベント</th><th>今日やること</th></tr></thead>
+        <tbody>
+          <tr><td>6501.T 日立</td><td>ウォッチ</td><td>変化なし(価格更新なし、開示なし)</td><td>-5.7%(4,805→ゾーン上限4,530)</td><td>FY2026 Q1決算(日付<b>要確認</b>)</td><td>決算発表日の確定</td></tr>
+          <tr><td>6503.T 三菱電機</td><td>ウォッチ</td><td>変化なし</td><td>-7.8%(6,043→5,570)</td><td>FY2026 Q1決算(日付<b>要確認</b>)</td><td>決算発表日の確定</td></tr>
+          <tr><td>6701.T NEC</td><td><b>データ不足</b></td><td>PER/FCF利回りの取得を試行したが、信頼できる値が得られず未完了</td><td>ゾーン未設定</td><td>ゾーン設定期限 2026-07-10</td><td>PER・FCF利回り・過去PERレンジの取得(残り3日)</td></tr>
+          <tr><td>7011.T 三菱重工</td><td>ウォッチ(急騰後)</td><td>変化なし。急騰翌日の出来高・反落耐性は7/7終値未取得のため判定持ち越し</td><td>-11.9%(4,110→3,620)</td><td>FY2026 Q1決算(日付<b>要確認</b>)</td><td>出来高整理の確認(明日)</td></tr>
+          <tr><td>5803.T フジクラ</td><td>ウォッチ(過熱)</td><td>変化なし。価格経路(-20%)は遠く、証拠経路(Q1決算での粗利/AI DC比率開示)が本線であることを再確認</td><td>-20.2%(5,354→4,270)</td><td>FY2026 Q1決算(日付<b>要確認</b>)</td><td>決算発表日の確定</td></tr>
+          <tr><td>監視のみ4銘柄</td><td>監視</td><td>アドバンテスト、ダイキン、IHI、キオクシア: 昇格条件に変化なし</td><td>-</td><td>各Q1決算</td><td>なし</td></tr>
+          <tr><td>廃棄プラン</td><td>-</td><td>なし</td><td>-</td><td>-</td><td>-</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="regime-band">
+      <div class="stance-card">
+        <div class="metric-label">Market Regime</div>
+        <div class="stance-value"><span class="stance-score">3</span><span class="stance-max">/ 5</span></div>
+        <div class="stance-label">調整中 / 分割で拾う候補(信頼度: 低)</div>
+        <p class="note">7/7の東京市場終値・日経VIが未取得のため、7/6終値ベースの判定を据え置き。未取得項目が2つ以上あるため、本日のレジーム判定の信頼度は「低」とし、プランの成立判定には使わない。</p>
+      </div>
+      <div class="panel">
+        <h2 class="section-title">市況チェック(7/6終値、7/7は未取得)</h2>
+        <div class="indicator-grid">
+          <div class="indicator"><b>日経平均</b><span>69,737.69(7/6)/ 7/7未取得</span></div>
+          <div class="indicator"><b>TOPIX</b><span>4,101.96(7/6)/ 7/7未取得</span></div>
+          <div class="indicator"><b>S&amp;P 500</b><span>7,537.43(7/6)</span></div>
+          <div class="indicator"><b>SOX</b><span>12,900.14(7/6反発)</span></div>
+          <div class="indicator"><b>VIX / 日経VI</b><span>15.57 / 未取得</span></div>
+          <div class="indicator"><b>USD/JPY</b><span>162円台(7/6時点)</span></div>
+          <div class="indicator"><b>10年金利</b><span>米4.48-4.49% / 日2.83%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="memo-banner">
+      <div class="memo-kicker">Investor Memo</div>
+      <h2 class="memo-title">今日の核心: 5つのプランの判定日が、すべて7月下旬の決算に集中している</h2>
+      <p class="memo-copy">今日は新しい材料がない日。こういう日に分析を書き直すとスコアが理由なく動き、判断がぶれる。今日やるべきことは一つで、「次に何が起きたら動くのか」を日付で固定すること。アクティブな5プランの証拠経路はすべてFY2026 Q1決算(7月下旬〜8月上旬)が判定イベントであり、決算日を確定させれば、それまでの毎日は価格経路(ゾーン接近)の監視だけでよい。</p>
+      <div class="memo-points">
+        <div class="memo-point"><b>最も強い仮説</b><span>変更なし: 日立・三菱電機がAI電力/防衛電子を「大型黒字の実需」で取る複利候補。</span></div>
+        <div class="memo-point"><b>今日動かない理由</b><span>全プランがゾーン外、Buy Readiness最高84(90未満)、市況判定の信頼度が低い。</span></div>
+        <div class="memo-point"><b>次に動く条件</b><span>①いずれかがゾーン到達 ②Q1決算で証拠経路の数値条件が成立 ③無効化条件に該当(プラン廃棄)。</span></div>
+        <div class="memo-point"><b>運用上の課題</b><span>7/7終値が取得できず、ゾーン距離が1日古い。終値取得の仕組み化が必要。</span></div>
+      </div>
+    </section>
+
+    <section class="table-wrap">
+      <h2 class="table-title">買付判断直前スコア(数値化した条件付き)</h2>
+      <p class="note">閾値は調査上の<b>仮設定</b>。次のQ1決算資料で過去実績(受注残成長率、セグメント利益率の推移)を取得して校正する。「買える条件」が成立してもBuy Readinessの再採点を経るまで買付候補にはしない。売買指示ではない。</p>
+      <table>
+        <thead><tr><th>銘柄</th><th>Buy Readiness</th><th>今日の扱い</th><th>価格経路(前提付き)</th><th>証拠経路(数値仮設定)</th><th>買わない条件(数値仮設定)</th><th>次決算日 / KPI</th></tr></thead>
+        <tbody>
+          <tr><td>6501.T 日立</td><td class="score">84</td><td>詳細分析へ進める</td><td>4,150〜4,530円(EPS据え置きPER22〜24倍相当)</td><td>Q1でHitachi Energy受注残が前年比+15%以上、かつ調整後EBITA率が前年同期以上、かつコアFCF黒字なら、現値PER25倍台を許容しBuy Readiness再採点</td><td>受注残の伸びが前年比+10%未満 / EBITA率が前年同期比-1pt超の悪化 / 大型案件の採算悪化開示</td><td>要確認(7月下旬見込み)/ グリッド受注残、調整後EBITA率、コアFCF</td></tr>
+          <tr><td>6503.T 三菱電機</td><td class="score">82</td><td>詳細分析へ進める</td><td>5,100〜5,570円(PER22〜24倍相当)</td><td>Q1で防衛・宇宙セグメントが増収増益(利益率8%以上目安)、かつ電力機器受注が前年比プラスなら現値PER26倍を許容し再採点</td><td>FA受注が2四半期連続で前年割れ / 防衛・電力の利益寄与がセグメント開示で確認できない</td><td>要確認(7月下旬見込み)/ セグメント利益、防衛・宇宙受注、FA受注</td></tr>
+          <tr><td>6701.T NEC</td><td class="score">80</td><td>詳細分析へ進める(データ不足)</td><td><b>未設定</b>(PER/FCF取得後、期限7/10)</td><td>Q1で調整後営業利益率が会社計画線以上、かつ防衛通信/官公庁AIの具体的案件開示あり</td><td>低採算案件による利益率悪化の再発 / 2四半期連続でAI・防衛ITの寄与が確認できない</td><td>要確認(7月下旬見込み)/ 調整後営業利益率、官公庁・防衛IT受注</td></tr>
+          <tr><td>7011.T 三菱重工</td><td>76</td><td>良いが追わない</td><td>3,390〜3,620円(PER30〜32倍相当)</td><td>Q1でEPSが通期計画比+20%相当の上振れペース、かつ受注残の利益率維持が確認できれば、現値PER36倍でも再採点</td><td>受注残の採算悪化開示 / 急騰後5営業日で出来高が半減し高値から-10%超(需給崩れ) / 防衛予算関連の政治後退</td><td>要確認(8月上旬見込み)/ 受注残、事業利益率、FCF、GTCC採算</td></tr>
+          <tr><td>5803.T フジクラ</td><td>72</td><td>良いが追わない</td><td>3,800〜4,270円(PER40〜45倍相当。到達確率低の前提)</td><td><b>本線</b>: Q1でAI DC向け売上比率が開示され、情報通信の粗利率が前年比+1pt以上、増産稼働時期が確定すれば、来期EPSベースPERで再計算し再採点</td><td>増産稼働の後ズレ / 粗利率が前年比横ばい以下 / 価格改定の浸透が確認できない</td><td>要確認(8月上旬見込み)/ AI DC売上比率、粗利率、増産稼働時期、FCF</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="grid-2">
+      <div class="panel">
+        <h2 class="section-title">スコア据え置きの宣言</h2>
+        <ul class="bullets">
+          <li>本日、上位10銘柄のQuality / Entry / Final / Buy Readinessはすべて朝版から据え置き。</li>
+          <li>理由: 7/7の価格・出来高・開示のいずれも取得できておらず、スコアを動かす材料が存在しないため(「材料なしにFinalを10点以上動かさない」ルールの適用)。</li>
+          <li>上位10比較表・銘柄別文章考察・財務確認は<a href="./2026-07-07.html">朝版レポート</a>から変更なし。再掲しない。</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2 class="section-title">明日の確認事項(優先順)</h2>
+        <ul class="bullets">
+          <li>7/7・7/8の終値取得とAction Boardのゾーン距離更新。三菱重工の急騰後出来高の確認。</li>
+          <li>5プランすべての決算発表日を各社IRカレンダーで確定させ、`plans/entry_plans.md` に記入。</li>
+          <li>NECのPER・FCF利回り・過去PERレンジ取得(ゾーン設定期限7/10まで残り3日)。</li>
+          <li>`pick_performance.csv` への日次追記(終値が取れ次第)。初回週次検証は7/11(土)。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="panel">
+        <h2 class="section-title">データ取得の記録(正直な開示)</h2>
+        <ul class="bullets">
+          <li>7/7終値の取得を試行したが、取得値が既存記録(7/6終値)と大きく矛盾し、信頼性を確認できなかったため「未取得」とした。</li>
+          <li>未取得の影響: Action Boardのゾーン距離が1営業日古い。市況レジーム判定の信頼度を「低」に降格。</li>
+          <li>恒久対策: 終値・PER・出来高を毎日確実に取得するデータパイプライン(取得元の固定と検証手順)の整備を`criteria_improvement_log.md`に追加候補として記録。</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2 class="section-title">出典</h2>
+        <ul class="bullets">
+          <li>価格・市況・個別株データ: <a href="./2026-07-07.html">2026-07-07朝版レポート</a>の出典一覧(7/6終値ベース)を参照。</li>
+          <li>本v2版で新規に採用した外部データ: なし(取得試行はしたが未採用)。</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>本レポートは調査候補の整理であり、売買指示ではありません。閾値はすべて調査上の仮設定であり、決算資料で校正するまで買付判断には使えません。実際の判断前に公式開示と市場データを再確認してください。</p>
+    </footer>
+  </main>
+</body>
+</html>

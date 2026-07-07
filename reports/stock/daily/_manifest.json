@@ -1,0 +1,82 @@
+{
+  "category": "stock",
+  "source_name": "stock",
+  "type": "local",
+  "from": "C:\\Users\\kitad\\workspace\\stock\\reports",
+  "destination": "stock/daily",
+  "destination_path": "reports/stock/daily",
+  "patterns": [
+    "2???-??-??*.md",
+    "2???-??-??*.html"
+  ],
+  "date": "2026-07-07",
+  "synced_at": "2026-07-07T12:51:54+09:00",
+  "title": "Stock daily reports",
+  "project": "stock",
+  "kind": "report",
+  "notes": [
+    "Daily stock reports named YYYY-MM-DD(.md/.html), some with -v2 suffix; index.html is a viewer page and excluded"
+  ],
+  "files": [
+    {
+      "path": "2026-06-25.md",
+      "size": 25575,
+      "sha256": "383e780ecff06adb05afe1b4f1693a300313499d4baba1765761815d0bb3da93"
+    },
+    {
+      "path": "2026-06-26.md",
+      "size": 26567,
+      "sha256": "69654bdfd12d496b54ecc3c4807cabd3011c654ad193e58c627d5e7d201698e8"
+    },
+    {
+      "path": "2026-06-27.md",
+      "size": 25909,
+      "sha256": "1a59ec6272da34ec59ee6eea402fe6f024ba84f02c7f7600b6f5015a669ba500"
+    },
+    {
+      "path": "2026-06-28.html",
+      "size": 20523,
+      "sha256": "61624e26b87e6663f2e8e644dd8613e121266a09cda5a1cbac071a552a73e616"
+    },
+    {
+      "path": "2026-06-28.md",
+      "size": 23686,
+      "sha256": "59f3cd2cb22c5812102f1406a0d36f1055cbe6455506b9555b2ca8bee072f606"
+    },
+    {
+      "path": "2026-06-30.html",
+      "size": 31723,
+      "sha256": "1c4f2730c3953d6188a6f8b3243346b05e2d0f54b6057cf6c8bf68e60724658b"
+    },
+    {
+      "path": "2026-07-01.html",
+      "size": 26500,
+      "sha256": "7c8b934874c5a92ebf8712c430e0eead6036cd31cce9a50e388fcfc939750051"
+    },
+    {
+      "path": "2026-07-04.html",
+      "size": 31775,
+      "sha256": "0844fba8b121e96885a385be22a7ffab6aa135fc6f4c3dd99f6d1996414675d9"
+    },
+    {
+      "path": "2026-07-05.html",
+      "size": 36543,
+      "sha256": "b36ae62f709bbb099d64fd4592d679a1c65e66a2aab08f4e9bec83428f923ee8"
+    },
+    {
+      "path": "2026-07-06.html",
+      "size": 36456,
+      "sha256": "8f0b8c6b3788d1f0719d557e9b411be0444338550ea646e7f7d7e1425daa2d15"
+    },
+    {
+      "path": "2026-07-07-v2.html",
+      "size": 14193,
+      "sha256": "1bfccbc842641ea7adbf122514452c2fcf525388d515394805285957d232a24f"
+    },
+    {
+      "path": "2026-07-07.html",
+      "size": 82446,
+      "sha256": "01b3756bb2f0e53e7ba2c2d556f08ef85eb3e5f8dc80d569b89234cd9821ef25"
+    }
+  ]
+}

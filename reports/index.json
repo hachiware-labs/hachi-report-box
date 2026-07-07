@@ -1,0 +1,19 @@
+{
+  "reports": [
+    {
+      "title": "Stock daily reports",
+      "project": "stock",
+      "kind": "report",
+      "category": "stock",
+      "date": "2026-07-07",
+      "created_at": "2026-07-07T12:51:54+09:00",
+      "entry_path": "reports/stock/daily",
+      "manifest_path": "reports/stock/daily/_manifest.json",
+      "source_name": "stock",
+      "file_count": 12,
+      "notes": [
+        "Daily stock reports named YYYY-MM-DD(.md/.html), some with -v2 suffix; index.html is a viewer page and excluded"
+      ]
+    }
+  ]
+}
