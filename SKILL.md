@@ -1,6 +1,6 @@
 ---
 name: hachi-report-box
-description: Register report sources with category names, file source paths, and managed-folder destinations, fetch all registered report or document artifacts, place them under the configured hachi-report-box managed folder, then commit and push to a configured GitHub repository for personal static-site viewing on Vercel or similar hosts. Use when the user says hachi-report-box, report box, collect generated documents, sync report sources, register report sources, delete registered sources, archive reports, organize skill outputs, commit/push reports, GitHubへpush, Vercelで見る, 文書を集める, or レポートを整理.
+description: Register report sources with category names, file source paths, and managed-folder destinations, inspecting each project's report layout on first registration and remembering its file patterns, fetch all registered report or document artifacts, place them under the configured hachi-report-box managed folder, then commit and push to a configured GitHub repository for personal static-site viewing on Vercel or similar hosts. Use when the user says hachi-report-box, report box, collect generated documents, sync report sources, register report sources, inspect report sources, delete registered sources, archive reports, organize skill outputs, commit/push reports, GitHubへpush, Vercelで見る, 文書を集める, or レポートを整理.
 ---
 
 # Hachi Report Box
@@ -9,6 +9,11 @@ Use this skill to register report-producing locations with a category, a file
 source, and a destination inside the skill-managed folder. Sync all registered
 sources into the central `hachi-report-box` repository, then commit/push only
 after every registered source has been fetched successfully.
+
+Uploading reports means committing and pushing the report box repository
+itself with plain `git commit` and `git push`. There is no separate upload
+API or hosting-side deploy step: once the commit reaches GitHub, the static
+site host (Vercel or similar) picks it up from the repository.
 
 ## Workflow
 
@@ -31,18 +36,42 @@ after every registered source has been fetched successfully.
      --managed-root reports
    ```
 
-4. Register each report source once. Use `--pattern` for directories that
-   contain mixed files. `--to` is relative to the managed root:
+4. When the user first points at a report source, learn what that project's
+   reports look like before registering. Every project produces different
+   artifacts (Markdown dailies, HTML pages, dated folders, mixed assets), so
+   never assume the layout:
 
-   ```bash
-   hachi-report-box source add research \
-     --box-dir /path/to/hachi-report-box \
-     --from /path/to/project/reports \
-     --to research/daily \
-     --project my-project \
-     --title "Daily research reports" \
-     --pattern "*.md"
-   ```
+   1. Inspect the folder to see extensions, naming conventions, and the most
+      recent files:
+
+      ```bash
+      hachi-report-box source inspect --from /path/to/project/reports
+      ```
+
+   2. Open one or two of the `recent_files` and confirm they are the actual
+      report artifacts, not templates, assets, watchlists, or configuration.
+   3. Propose the category, `--pattern` selection (start from
+      `suggested_patterns`), and `--to` destination to the user, and confirm
+      which file kinds should be synced (e.g. Markdown only, or Markdown and
+      HTML).
+   4. Register the source, and record what you learned with `--note` so the
+      convention is remembered for future syncs:
+
+      ```bash
+      hachi-report-box source add research \
+        --box-dir /path/to/hachi-report-box \
+        --from /path/to/project/reports \
+        --to research/daily \
+        --project my-project \
+        --title "Daily research reports" \
+        --pattern "*.md" \
+        --note "Daily reports named YYYY-MM-DD.md in the folder root; HTML copies exist but are excluded"
+      ```
+
+   On later syncs, trust the stored patterns and notes from `source list`
+   instead of re-inspecting, unless a sync result looks wrong or the user says
+   the project's report format changed — then re-inspect and re-register with
+   `--replace`.
 
 5. Sync all registered sources and push them to the configured GitHub target:
 

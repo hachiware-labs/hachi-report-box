@@ -886,6 +886,101 @@ function sourceAddCommand(options) {
   printJson({ config: configPath, source });
 }
 
+function suggestPatterns(relativeFiles) {
+  const byExtension = new Map();
+  for (const relative of relativeFiles) {
+    const extension = path.extname(relative).toLowerCase();
+    if (!extension) {
+      continue;
+    }
+    const nested = relative.includes("/");
+    const entry = byExtension.get(extension) || { count: 0, nested: false };
+    entry.count += 1;
+    entry.nested ||= nested;
+    byExtension.set(extension, entry);
+  }
+  return [...byExtension.entries()]
+    .sort((left, right) => right[1].count - left[1].count)
+    .map(([extension, entry]) =>
+      entry.nested ? `**/*${extension}` : `*${extension}`
+    );
+}
+
+function sourceInspectCommand(options) {
+  const from = options.from || options.path;
+  if (!from) {
+    fail("source inspect requires --from");
+  }
+  const sourcePath = resolvePath(from);
+  if (!fs.existsSync(sourcePath)) {
+    fail(`Source does not exist: ${sourcePath}`);
+  }
+
+  const stat = fs.statSync(sourcePath);
+  if (stat.isFile()) {
+    printJson({
+      source: sourcePath,
+      type: "file",
+      size: stat.size,
+      modified: localIsoString(stat.mtime),
+      suggested_patterns: [],
+    });
+    return;
+  }
+
+  const files = iterFiles(sourcePath);
+  const relativeFiles = files.map((filePath) =>
+    toPosix(path.relative(sourcePath, filePath))
+  );
+
+  const extensions = {};
+  for (const relative of relativeFiles) {
+    const extension = path.extname(relative).toLowerCase() || "(none)";
+    extensions[extension] = (extensions[extension] || 0) + 1;
+  }
+
+  const topLevel = fs
+    .readdirSync(sourcePath, { withFileTypes: true })
+    .filter((entry) => !SKIP_DIRS.has(entry.name))
+    .map((entry) => ({
+      name: entry.name,
+      type: entry.isDirectory() ? "directory" : "file",
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  const maxRecent = Number(options.maxRecent || 10);
+  const recentFiles = files
+    .map((filePath) => {
+      const fileStat = fs.statSync(filePath);
+      return {
+        path: toPosix(path.relative(sourcePath, filePath)),
+        size: fileStat.size,
+        modified: localIsoString(fileStat.mtime),
+        mtimeMs: fileStat.mtimeMs,
+      };
+    })
+    .sort((left, right) => right.mtimeMs - left.mtimeMs)
+    .slice(0, maxRecent)
+    .map(({ mtimeMs, ...rest }) => rest);
+
+  const dateNamed = relativeFiles.filter((relative) =>
+    /\d{4}-\d{2}-\d{2}/.test(path.basename(relative))
+  );
+
+  printJson({
+    source: sourcePath,
+    type: "directory",
+    file_count: relativeFiles.length,
+    extensions,
+    top_level: topLevel,
+    recent_files: recentFiles,
+    date_named_file_count: dateNamed.length,
+    suggested_patterns: suggestPatterns(
+      dateNamed.length > 0 ? dateNamed : relativeFiles
+    ),
+  });
+}
+
 function sourceListCommand(options) {
   const boxDir = resolveBoxDir(options.boxDir);
   ensureGitRepo(boxDir);
@@ -1239,6 +1334,7 @@ function sourceUsage() {
   return `Usage: hachi-report-box source <command> [options]
 
 Commands:
+  inspect --from <path>      Inspect a report folder before registering
   add <category> --from <path> --to <path>
                              Register a report source
   list                       List registered sources
@@ -1296,6 +1392,15 @@ function dispatch(argv) {
   if (command === "source") {
     if (!subcommand || subcommand === "--help" || subcommand === "-h") {
       process.stdout.write(sourceUsage());
+      return;
+    }
+    if (subcommand === "inspect") {
+      const options = parseOptions(rest, {
+        from: { key: "from", type: "value" },
+        path: { key: "path", type: "value" },
+        "max-recent": { key: "maxRecent", type: "value" },
+      });
+      sourceInspectCommand(options);
       return;
     }
     if (subcommand === "add") {
